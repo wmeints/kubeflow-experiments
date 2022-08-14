@@ -1,0 +1,143 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: prepare-dataset-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.13, pipelines.kubeflow.org/pipeline_compilation_time: '2022-08-14T21:30:30.984874',
+    pipelines.kubeflow.org/pipeline_spec: '{"name": "Prepare dataset"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.13}
+spec:
+  entrypoint: prepare-dataset
+  templates:
+  - name: download-object-from-minio
+    container:
+      args: []
+      command: [python3, /pipelines/component/src/component.py, --bucket, datalake,
+        --path, /raw/wachttijden/2022/08/14/wachttijden.csv, --output, /tmp/outputs/output/data]
+      image: localhost:5000/minio-download@sha256:09af8e47b6b069797811d8493da0a637a05bbf34f2c63918b4ae2f108fc445e0
+    outputs:
+      artifacts:
+      - {name: download-object-from-minio-output, path: /tmp/outputs/output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.13
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Downloads
+          an object from minio", "implementation": {"container": {"command": ["python3",
+          "/pipelines/component/src/component.py", "--bucket", {"inputValue": "bucket"},
+          "--path", {"inputValue": "path"}, "--output", {"outputPath": "output"}],
+          "image": "localhost:5000/minio-download@sha256:09af8e47b6b069797811d8493da0a637a05bbf34f2c63918b4ae2f108fc445e0"}},
+          "inputs": [{"description": "Name of the bucket to download from", "name":
+          "bucket", "type": "String"}, {"description": "Path to the object to download",
+          "name": "path", "type": "String"}], "name": "Download object from Minio",
+          "outputs": [{"description": "Path where the object should be stored", "name":
+          "output", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "7a06c47ace4fb6d38d88f0dc8012a043fd3b965ea48e549bad5eab92395b398d", "url":
+          "/home/willem/projects/wachttijden/pipelines/prepare_data/../../components/minio-download/component.yaml"}',
+        pipelines.kubeflow.org/arguments.parameters: '{"bucket": "datalake", "path":
+          "/raw/wachttijden/2022/08/14/wachttijden.csv"}'}
+  - name: fix-missing-values
+    container:
+      args: []
+      command: [python3, /pipelines/component/src/component.py, --input, /tmp/inputs/input/data,
+        --output, /tmp/outputs/output/data]
+      image: localhost:5000/fix-missing-values@sha256:903254f516d066489fb3fee42b673c9644ed351c9a82948fa08243d8ef7053c5
+    inputs:
+      artifacts:
+      - {name: select-features-output, path: /tmp/inputs/input/data}
+    outputs:
+      artifacts:
+      - {name: fix-missing-values-output, path: /tmp/outputs/output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.13
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Fixes
+          missing values for wachttijden and type_zorginstelling", "implementation":
+          {"container": {"command": ["python3", "/pipelines/component/src/component.py",
+          "--input", {"inputPath": "input"}, "--output", {"outputPath": "output"}],
+          "image": "localhost:5000/fix-missing-values@sha256:903254f516d066489fb3fee42b673c9644ed351c9a82948fa08243d8ef7053c5"}},
+          "inputs": [{"description": "Path to the input file", "name": "input", "type":
+          "String"}], "name": "Fix missing values", "outputs": [{"description": "Path
+          to the output file", "name": "output", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "dacc089a849ee96b2620b8896cfe04cafb65c6c93e17cc4a07d8724ed2aa5ade", "url":
+          "/home/willem/projects/wachttijden/pipelines/prepare_data/../../components/fix-missing-values/component.yaml"}'}
+  - name: prepare-dataset
+    dag:
+      tasks:
+      - {name: download-object-from-minio, template: download-object-from-minio}
+      - name: fix-missing-values
+        template: fix-missing-values
+        dependencies: [select-features]
+        arguments:
+          artifacts:
+          - {name: select-features-output, from: '{{tasks.select-features.outputs.artifacts.select-features-output}}'}
+      - name: select-features
+        template: select-features
+        dependencies: [download-object-from-minio]
+        arguments:
+          artifacts:
+          - {name: download-object-from-minio-output, from: '{{tasks.download-object-from-minio.outputs.artifacts.download-object-from-minio-output}}'}
+      - name: upload-object-to-minio
+        template: upload-object-to-minio
+        dependencies: [fix-missing-values]
+        arguments:
+          artifacts:
+          - {name: fix-missing-values-output, from: '{{tasks.fix-missing-values.outputs.artifacts.fix-missing-values-output}}'}
+  - name: select-features
+    container:
+      args: []
+      command: [python3, /pipelines/component/src/component.py, --input, /tmp/inputs/input/data,
+        --output, /tmp/outputs/output/data]
+      image: localhost:5000/feature-selection@sha256:0e8b9e613b5e96970b127e954fcb68d5eee5c34b30e2c86a09c28b04d6fde605
+    inputs:
+      artifacts:
+      - {name: download-object-from-minio-output, path: /tmp/inputs/input/data}
+    outputs:
+      artifacts:
+      - {name: select-features-output, path: /tmp/outputs/output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.13
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Selects
+          features for the model", "implementation": {"container": {"command": ["python3",
+          "/pipelines/component/src/component.py", "--input", {"inputPath": "input"},
+          "--output", {"outputPath": "output"}], "image": "localhost:5000/feature-selection@sha256:0e8b9e613b5e96970b127e954fcb68d5eee5c34b30e2c86a09c28b04d6fde605"}},
+          "inputs": [{"description": "Path to the input file", "name": "input", "type":
+          "String"}], "name": "Select features", "outputs": [{"description": "Path
+          to the output file", "name": "output", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "a29df6b1becac59836e858aa44a662b7410f6842133614918d4710a7b22057c2", "url":
+          "/home/willem/projects/wachttijden/pipelines/prepare_data/../../components/feature-selection/component.yaml"}'}
+  - name: upload-object-to-minio
+    container:
+      args: []
+      command: [python3, /pipelines/component/src/component.py, --bucket, datalake,
+        --path, preprocessed/wachttijden/2022/08/14/wachttijden.csv, --input, /tmp/inputs/input/data]
+      image: localhost:5000/minio-upload@sha256:31826db024872cb6d12ef5ebe7c8ffa11b2fdef3ce702ebbca8eec170d3fa2b0
+    inputs:
+      artifacts:
+      - {name: fix-missing-values-output, path: /tmp/inputs/input/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.13
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Uploads
+          an object to minio", "implementation": {"container": {"command": ["python3",
+          "/pipelines/component/src/component.py", "--bucket", {"inputValue": "bucket"},
+          "--path", {"inputValue": "path"}, "--input", {"inputPath": "input"}], "image":
+          "localhost:5000/minio-upload@sha256:31826db024872cb6d12ef5ebe7c8ffa11b2fdef3ce702ebbca8eec170d3fa2b0"}},
+          "inputs": [{"description": "Name of the bucket to upload to", "name": "bucket",
+          "type": "String"}, {"description": "Path to the object to upload to", "name":
+          "path", "type": "String"}, {"description": "Path where to load the data
+          from", "name": "input", "type": "String"}], "name": "Upload object to Minio"}',
+        pipelines.kubeflow.org/component_ref: '{"digest": "463bd8f25de5a8bb3ddd24a14fab9718717c2c1923bf9d1c027c0538c89f3526",
+          "url": "/home/willem/projects/wachttijden/pipelines/prepare_data/../../components/minio-upload/component.yaml"}',
+        pipelines.kubeflow.org/arguments.parameters: '{"bucket": "datalake", "path":
+          "preprocessed/wachttijden/2022/08/14/wachttijden.csv"}'}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner

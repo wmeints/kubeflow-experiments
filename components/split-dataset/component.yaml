@@ -1,0 +1,25 @@
+name: Split dataset
+description: Splits the dataset in a training and a validation set
+
+inputs:
+  - { name: input, type: String, description: Path to the input file}
+  - { name: test_size, type: Float, description: Percentage of data to put in the validation set}
+outputs:
+  - { name: train_output, type: String, description: Path where to store the training dataset}
+  - { name: validation_output, type: String, description: Path where to store the validation dataset}
+
+implementation:
+  container:
+    image: localhost:5000/minio-download@sha256:63e139ed787ef7e0aea1a1bcec147e677e37c59f85b2340dc8b4908cd4238ce1
+    command: [
+      "python3",
+      "/pipelines/component/src/component.py",
+      "--input",
+      { inputPath: input },
+      "--train-output",
+      { outputPath: train_output },
+      "--validation-output",
+      { outputPath: validation_output },
+      "--test-size",
+      { inputValue: test_size }
+    ]

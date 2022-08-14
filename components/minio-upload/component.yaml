@@ -1,0 +1,21 @@
+name: Upload object to Minio
+description: Uploads an object to minio
+
+inputs:
+  - { name: bucket, type: String, description: Name of the bucket to upload to }
+  - { name: path, type: String, description: Path to the object to upload to }
+  - { name: input, type: String, description: Path where to load the data from }
+
+implementation:
+  container:
+    image: localhost:5000/minio-upload@sha256:31826db024872cb6d12ef5ebe7c8ffa11b2fdef3ce702ebbca8eec170d3fa2b0
+    command: [
+      "python3",
+      "/pipelines/component/src/component.py",
+      "--bucket",
+      { inputValue: bucket },
+      "--path",
+      { inputValue: path },
+      "--input",
+      { inputPath: input }
+    ]

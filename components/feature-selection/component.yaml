@@ -1,0 +1,19 @@
+name: Select features
+description: Selects features for the model
+
+inputs:
+  - { name: input, type: String, description: Path to the input file}
+outputs:
+  - { name: output, type: String, description: Path to the output file}
+
+implementation:
+  container:
+    image: localhost:5000/feature-selection@sha256:0e8b9e613b5e96970b127e954fcb68d5eee5c34b30e2c86a09c28b04d6fde605
+    command: [
+      "python3",
+      "/pipelines/component/src/component.py",
+      "--input",
+      { inputPath: input },
+      "--output",
+      { outputPath: output }
+    ]

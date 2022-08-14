@@ -1,0 +1,22 @@
+name: Download object from Minio
+description: Downloads an object from minio
+
+inputs:
+  - { name: bucket, type: String, description: Name of the bucket to download from}
+  - { name: path, type: String, description: Path to the object to download}
+outputs:
+  - { name: output, type: String, description: Path where the object should be stored}
+
+implementation:
+  container:
+    image: localhost:5000/minio-download@sha256:09af8e47b6b069797811d8493da0a637a05bbf34f2c63918b4ae2f108fc445e0
+    command: [
+      "python3",
+      "/pipelines/component/src/component.py",
+      "--bucket",
+      { inputValue: bucket },
+      "--path",
+      { inputValue: path },
+      "--output",
+      { outputPath: output }
+    ]

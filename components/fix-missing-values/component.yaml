@@ -1,0 +1,19 @@
+name: Fix missing values
+description: Fixes missing values for wachttijden and type_zorginstelling
+
+inputs:
+  - { name: input, type: String, description: Path to the input file}
+outputs:
+  - { name: output, type: String, description: Path to the output file}
+
+implementation:
+  container:
+    image: localhost:5000/fix-missing-values@sha256:903254f516d066489fb3fee42b673c9644ed351c9a82948fa08243d8ef7053c5
+    command: [
+      "python3",
+      "/pipelines/component/src/component.py",
+      "--input",
+      { inputPath: input },
+      "--output",
+      { outputPath: output }
+    ]
